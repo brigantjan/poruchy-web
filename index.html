@@ -1,0 +1,1769 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="app-version" content="1.0.0">
+<title>Poruchy</title>
+<style>
+  :root{
+    --zelena:#1b5e20; --zelena-bg:#8fe38f;
+    --oranzova:#ef6c00; --oranzova-bg:#fff3e0;
+    --cervena:#b71c1c; --cervena-bg:#ffb3b3;
+    --siva:#757575; --siva-bg:#f0f0f0;
+    --modra:#0d47a1; --modra-bg:#64b5f6;
+    --zlta:#8a6100; --zlta-bg:#ffeb3b;
+    --provizorna:#4d7c0f; --provizorna-bg:#aef73e;
+    --sidebar-bg:#0d2b4e; --sidebar-fg:#e4e7eb;
+    --border:#dcdfe3; --text:#1f2933; --muted:#6b7280;
+    --accent:#2563eb;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--text);background:#f7f8fa;}
+  button{cursor:pointer;font-family:inherit;}
+  input,select,textarea{font-family:inherit;font-size:14px;padding:6px 8px;border:1px solid var(--border);border-radius:4px;background:#fff;}
+  table{border-collapse:collapse;width:100%;font-size:11.5px;table-layout:fixed;}
+  th,td{padding:4px 6px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  th{background:#eef1f4;position:sticky;top:0;cursor:pointer;user-select:none;font-size:11px;}
+  .col-resize-handle{position:absolute;right:0;top:0;width:6px;height:100%;cursor:col-resize;z-index:2;}
+  .col-resize-handle:hover,.col-resize-handle.resizing{background:var(--accent);opacity:.5;}
+  tr:hover{background:#f0f4ff;cursor:pointer;}
+  td.wrap-ellipsis{max-width:1px;}
+
+  /* ---------- Login ---------- */
+  #login-screen{display:flex;align-items:center;justify-content:center;height:100vh;}
+  #login-box{background:#fff;padding:32px;border-radius:8px;box-shadow:0 2px 12px rgba(0,0,0,.1);width:320px;}
+  #login-box h1{margin-top:0;font-size:20px;}
+  #login-box input{width:100%;margin-bottom:12px;}
+  #login-box button{width:100%;background:var(--accent);color:#fff;border:none;padding:10px;border-radius:4px;font-size:14px;}
+  #login-error{color:var(--cervena);font-size:13px;margin-bottom:8px;min-height:16px;}
+
+  /* ---------- App shell ---------- */
+  #app{display:flex;height:100vh;}
+  #sidebar{width:160px;background:var(--sidebar-bg);color:var(--sidebar-fg);display:flex;flex-direction:column;flex-shrink:0;}
+  #sidebar h2{padding:12px 10px;margin:0;font-size:14px;border-bottom:1px solid #1c4a7f;}
+  #sidebar .stats{padding:10px 10px 0;font-size:11.5px;border-bottom:1px solid #1c4a7f;}
+  #sidebar .stats div{display:flex;justify-content:space-between;gap:4px;padding:6px 4px;border:1px solid #fff;border-radius:3px;margin-bottom:4px;}
+  #sidebar .stats div:last-child{margin-bottom:0;}
+  #sidebar .stats div.stat-clickable{cursor:pointer;}
+  #sidebar .stats div.stat-clickable:hover{background:rgba(255,255,255,.15);}
+  #quick-filter-banner{background:var(--oranzova-bg);color:var(--oranzova);border-radius:6px;padding:8px 12px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;font-size:13px;font-weight:600;}
+  #sidebar nav{flex:1;padding:8px 0;}
+  #sidebar nav button{display:block;width:100%;text-align:left;background:none;border:none;color:var(--sidebar-fg);padding:9px 10px;font-size:12.5px;}
+  #sidebar nav button:hover,#sidebar nav button.active{background:#1c4a7f;}
+  #sidebar .userbox{padding:10px;border-top:1px solid #1c4a7f;font-size:11px;color:#9aa5b1;}
+  #sidebar .userbox button{margin-top:6px;background:none;border:1px solid #556070;color:var(--sidebar-fg);padding:4px 8px;border-radius:4px;font-size:11px;}
+
+  #content{flex:1;overflow:auto;padding:14px;min-width:0;}
+  .view{display:none;}
+  .view.active{display:block;}
+  .view-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+  .view-header h1{font-size:20px;margin:0;}
+  .btn-primary{background:var(--accent);color:#fff;border:none;padding:8px 14px;border-radius:4px;font-size:14px;}
+  .btn-secondary{background:#fff;border:1px solid var(--border);padding:8px 14px;border-radius:4px;font-size:14px;}
+  .btn-danger{background:var(--cervena);color:#fff;border:none;padding:6px 10px;border-radius:4px;font-size:13px;}
+
+  /* ---------- Filters ---------- */
+  .filters{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;background:#fff;padding:10px;border-radius:6px;border:1px solid var(--border);}
+  .filters select,.filters input{font-size:13px;padding:5px 6px;}
+  .filter-datum-label{display:flex;flex-direction:column;font-size:11px;color:var(--muted);gap:2px;}
+
+  /* ---------- Stĺpcové filtre (druhý riadok hlavičky tabuľky porúch) ---------- */
+  #poruchy-thead-row th{height:24px;}
+  #poruchy-filter-row th{position:sticky;top:24px;cursor:default;background:#fff;padding:3px 4px;font-weight:400;vertical-align:top;}
+  #poruchy-filter-row .col-filter{width:100%;font-size:10.5px;padding:2px 3px;border-radius:3px;box-sizing:border-box;}
+  .col-filter-datum{display:flex;flex-direction:column;gap:2px;}
+  .col-filter-datum input{width:100%;}
+  .col-filter-zakazka{display:flex;flex-direction:column;gap:2px;}
+  .col-filter-zakazka label{display:flex;align-items:center;gap:3px;font-size:9.5px;color:var(--muted);font-weight:400;white-space:nowrap;}
+  .col-filter-zakazka input[type=checkbox]{width:auto;padding:0;}
+
+  /* ---------- Table wrapper ---------- */
+  .table-wrap{background:#fff;border-radius:6px;border:1px solid var(--border);overflow:auto;max-height:calc(100vh - 170px);}
+  /* Tabuľka porúch nesmie zmršťovať stĺpce na šírku rámu - musí sa dať scrollovať doprava */
+  #poruchy-table{width:max-content;min-width:100%;}
+  /* Farba riadku podľa STAVU poruchy (nie podľa LT) - rovnaká logika ako v DISPECING */
+  tr.row-zrealizovana{background:var(--zelena-bg);}
+  tr.row-zrealizovana:hover{background:#d4ecd6;}
+  tr.row-stornovana{background:var(--zlta-bg);}
+  tr.row-stornovana:hover{background:#fff59d;}
+  tr.row-zaparkovana{background:var(--modra-bg);}
+  tr.row-zaparkovana:hover{background:#bbdefb;}
+  tr.row-otvorena{background:#fff;}
+  tr.row-nenaplanovana{background:var(--cervena-bg);}
+  tr.row-nenaplanovana:hover{background:#ff9999;}
+  tr.row-provizorna{background:var(--provizorna-bg);}
+  tr.row-provizorna:hover{background:#d4ffa0;}
+  .badge{display:inline-block;padding:1px 7px;border-radius:10px;font-size:11px;font-weight:600;white-space:nowrap;}
+  .badge-zelena{background:var(--zelena-bg);color:var(--zelena);}
+  .badge-oranzova{background:var(--oranzova-bg);color:var(--oranzova);}
+  .badge-cervena{background:var(--cervena-bg);color:var(--cervena);}
+  .badge-siva{background:var(--siva-bg);color:var(--siva);}
+
+  /* ---------- Modal ---------- */
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:flex-start;justify-content:center;padding:30px 16px;overflow:auto;z-index:50;}
+  .modal-box{background:#dbe2ec;border-radius:8px;width:820px;max-width:100%;padding:18px;}
+  .modal-box h2{margin-top:0;margin-bottom:10px;}
+  .form-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px 12px;}
+  .form-grid label{display:flex;flex-direction:column;font-size:11.5px;color:var(--muted);gap:3px;}
+  .form-grid label.full{grid-column:1/-1;}
+  .checkbox-row{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text);flex-direction:row!important;}
+  .modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px;}
+  .section-title{font-weight:600;margin:12px 0 6px;border-top:1px solid #c4cddb;padding-top:10px;}
+  .top-id-row{display:grid;grid-template-columns:160px 1fr;gap:12px;margin-bottom:2px;}
+  .top-id-row label{display:flex;flex-direction:column;font-size:11.5px;color:var(--muted);gap:3px;}
+  .dup-warning-top{background:var(--cervena-bg);color:var(--cervena);border-radius:4px;padding:7px 10px;font-size:13px;font-weight:600;margin-top:6px;}
+  .suvisiaca-compact{margin-top:6px;font-size:12.5px;}
+  .suvisiaca-compact .section-title{margin:8px 0 4px;padding-top:8px;font-size:13px;}
+  .priradenie-row{display:flex;gap:8px;align-items:center;font-size:13px;padding:6px 0;border-bottom:1px solid #f0f0f0;flex-wrap:wrap;}
+  .priradenie-row span.pr-info{flex:1;}
+  .priradenie-edit-row{display:flex;gap:6px;align-items:center;flex-wrap:wrap;background:#f7f8fa;border-radius:4px;padding:6px;margin:4px 0;}
+  .vytazenost-hint{font-size:12px;color:var(--muted);background:#f7f8fa;border-radius:4px;padding:8px;margin-top:6px;}
+  .vytazenost-hint b.warn{color:var(--oranzova);}
+  .vytazenost-hint b.warn2{color:var(--cervena);}
+
+  .paste-box{background:#eef4ff;border:1px solid #c8dbfb;border-radius:6px;padding:10px;margin-bottom:16px;display:flex;flex-direction:column;gap:6px;}
+  .paste-box textarea{font-family:monospace;font-size:12px;resize:vertical;}
+
+  .stav-warning{background:var(--cervena-bg);color:var(--cervena);border-radius:4px;padding:8px 10px;font-size:13px;margin-top:8px;}
+
+  .technik-checkboxes{display:flex;flex-wrap:wrap;gap:10px;background:#f7f8fa;border-radius:4px;padding:8px;}
+  .technik-checkboxes label{flex-direction:row!important;align-items:center;gap:4px;font-size:13px;color:var(--text);}
+  .priradenie-add-box{background:#fbfbfc;border:1px solid var(--border);border-radius:6px;padding:10px;margin-top:6px;}
+  #pr-od.pr-od-auto{background:#fff9db;border-color:#f0c419;}
+  .vytazenost-3day{border-collapse:collapse;margin-top:6px;font-size:11.5px;}
+  .vytazenost-3day th,.vytazenost-3day td{border:1px solid var(--border);padding:3px 6px;text-align:center;}
+  .vytazenost-3day th{background:#eef1f4;font-weight:600;}
+  .vytazenost-3day td.vt-0{background:var(--zelena-bg);}
+  .vytazenost-3day td.vt-1{background:var(--oranzova-bg);}
+  .vytazenost-3day td.vt-2{background:var(--cervena-bg);}
+  .vytazenost-3day td.vt-tech{text-align:left;font-weight:600;background:#fff;}
+
+  .card-list{display:flex;flex-direction:column;gap:8px;}
+  .card-item{display:flex;justify-content:space-between;align-items:center;background:#fff;border:1px solid var(--border);border-radius:6px;padding:10px 14px;}
+  .card-item.inactive{opacity:.5;}
+  .add-row{display:flex;gap:8px;margin-bottom:14px;}
+  .hidden{display:none!important;}
+</style>
+</head>
+<body>
+
+<div id="login-screen">
+  <div id="login-box">
+    <h1>Poruchy — prihlásenie</h1>
+    <div id="login-error"></div>
+    <input id="login-email" type="email" placeholder="Email" autocomplete="email">
+    <input id="login-password" type="password" placeholder="Heslo" autocomplete="current-password">
+    <button id="login-btn">Prihlásiť sa</button>
+  </div>
+</div>
+
+<div id="app" class="hidden">
+  <aside id="sidebar">
+    <h2>⚡ Poruchy</h2>
+    <div class="stats" id="sidebar-stats">
+      <div data-stat-row="otvorene"><span>Otvorené</span><b id="stat-otvorene">–</b></div>
+      <div data-stat-row="blizi_sa_lt"><span>Blíži sa LT 🟠</span><b id="stat-blizi">–</b></div>
+      <div data-stat-row="po_lt"><span>Po LT 🔴</span><b id="stat-po-lt">–</b></div>
+      <div data-stat-row="nenaplanovane"><span>Nenaplánované 🔴</span><b id="stat-nenaplanovane">–</b></div>
+      <div data-stat-row="espm_nezadane"><span>Nezadané ESPM</span><b id="stat-espm-nezadane">–</b></div>
+      <div data-stat-row="espm_neschvalene"><span>Neschválené ESPM</span><b id="stat-espm-neschvalene">–</b></div>
+      <div data-stat-row="provizorne"><span>Provizórne 💚</span><b id="stat-provizorne">–</b></div>
+    </div>
+    <nav>
+      <button data-view="poruchy" class="active">📋 Zoznam porúch</button>
+      <button data-view="prehlad">💰 Prehľad</button>
+      <button data-view="technici">👷 Technici</button>
+      <button data-view="nastavenia">⚙️ Nastavenia</button>
+      <button data-view="pouzivatelia" data-role="admin">👤 Používatelia</button>
+    </nav>
+    <div class="userbox">
+      Prihlásený: <b id="current-email">–</b> (<span id="current-role">–</span>)
+      <button id="logout-btn">Odhlásiť sa</button>
+    </div>
+  </aside>
+
+  <main id="content">
+
+    <!-- ===== Zoznam porúch ===== -->
+    <section id="view-poruchy" class="view active">
+      <div class="view-header">
+        <h1>Zoznam porúch</h1>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input id="f-hladat" placeholder="Hľadať (adresa, meno, popis, ID, zákazka)…" style="width:240px;">
+          <button class="btn-secondary" id="f-reset">Zrušiť filtre</button>
+          <button class="btn-secondary" id="btn-export-excel">⬇️ Export do Excelu</button>
+          <button class="btn-primary" id="btn-nova-porucha">+ Nová porucha</button>
+        </div>
+      </div>
+      <div id="quick-filter-banner" class="hidden">
+        <span id="quick-filter-text"></span>
+        <button class="btn-secondary" id="quick-filter-clear">Zobraziť všetky poruchy</button>
+      </div>
+      <div class="table-wrap">
+        <table id="poruchy-table">
+          <colgroup id="poruchy-colgroup">
+            <col data-col="0" style="width:78px"><col data-col="1" style="width:118px"><col data-col="2" style="width:58px"><col data-col="3" style="width:58px">
+            <col data-col="4" style="width:34px"><col data-col="5" style="width:58px"><col data-col="6" style="width:140px"><col data-col="7" style="width:130px">
+            <col data-col="8" style="width:80px"><col data-col="9" style="width:120px"><col data-col="10" style="width:120px"><col data-col="11" style="width:120px">
+            <col data-col="12" style="width:98px"><col data-col="13" style="width:92px"><col data-col="14" style="width:120px"><col data-col="15" style="width:120px">
+            <col data-col="16" style="width:120px"><col data-col="17" style="width:85px"><col data-col="18" style="width:80px"><col data-col="19" style="width:80px">
+            <col data-col="20" style="width:80px"><col data-col="21" style="width:115px"><col data-col="22" style="width:90px"><col data-col="23" style="width:150px">
+          </colgroup>
+          <thead>
+            <tr id="poruchy-thead-row">
+              <th data-col="0">Stav</th><th data-col="1">ID</th><th data-col="2">Dopad</th><th data-col="3">Typ</th><th data-col="4">Sieť</th><th data-col="5">Médium</th>
+              <th data-col="6">Popis</th><th data-col="7">Adresa</th><th data-col="8">Meno/Subjekt</th><th data-col="9">Zadané</th><th data-col="10">LT do</th><th data-col="11">Realizácia</th>
+              <th data-col="12">Plán</th><th data-col="13">LT (hh:mm)</th><th data-col="14">Realizuje</th><th data-col="15">SPM zadaný</th><th data-col="16">SPM schválený</th><th data-col="17">SPM č.</th><th data-col="18">Cena práce</th><th data-col="19">Cena mat.</th><th data-col="20">Tržba</th>
+              <th data-col="21">Zákazka</th><th data-col="22">Faktúra</th><th data-col="23">Poznámka</th>
+            </tr>
+            <tr id="poruchy-filter-row">
+              <th data-col="0"><select id="f-stav" class="col-filter"><option value="">Všetky</option></select></th>
+              <th data-col="1"></th>
+              <th data-col="2"><select id="f-dopad" class="col-filter"><option value="">Všetky</option></select></th>
+              <th data-col="3"><select id="f-typ" class="col-filter"><option value="">Všetky</option></select></th>
+              <th data-col="4"></th>
+              <th data-col="5"><select id="f-medium" class="col-filter"><option value="">Všetky</option></select></th>
+              <th data-col="6"></th>
+              <th data-col="7"></th>
+              <th data-col="8"></th>
+              <th data-col="9">
+                <div class="col-filter-datum">
+                  <input type="date" id="f-zadanie-od" class="col-filter" title="Zadané od">
+                  <input type="date" id="f-zadanie-do" class="col-filter" title="Zadané do">
+                </div>
+              </th>
+              <th data-col="10">
+                <div class="col-filter-datum">
+                  <input type="date" id="f-lt-od" class="col-filter" title="LT do — od">
+                  <input type="date" id="f-lt-do" class="col-filter" title="LT do — do">
+                </div>
+              </th>
+              <th data-col="11">
+                <div class="col-filter-datum">
+                  <input type="date" id="f-realizacia-od" class="col-filter" title="Realizácia od">
+                  <input type="date" id="f-realizacia-do" class="col-filter" title="Realizácia do">
+                </div>
+              </th>
+              <th data-col="12"></th>
+              <th data-col="13">
+                <select id="f-lt-status" class="col-filter">
+                  <option value="">Všetky</option>
+                  <option value="do_lt">Do LT</option>
+                  <option value="po_lt">Po LT</option>
+                </select>
+              </th>
+              <th data-col="14"><select id="f-technik" class="col-filter"><option value="">Všetci</option></select></th>
+              <th data-col="15">
+                <div class="col-filter-datum">
+                  <input type="date" id="f-spm-zadany-od" class="col-filter" title="SPM zadaný od">
+                  <input type="date" id="f-spm-zadany-do" class="col-filter" title="SPM zadaný do">
+                </div>
+              </th>
+              <th data-col="16">
+                <div class="col-filter-datum">
+                  <input type="date" id="f-spm-schvaleny-od" class="col-filter" title="SPM schválený od">
+                  <input type="date" id="f-spm-schvaleny-do" class="col-filter" title="SPM schválený do">
+                </div>
+              </th>
+              <th data-col="17"><input id="f-spm-cislo" class="col-filter" placeholder="SPM č."></th>
+              <th data-col="18"></th>
+              <th data-col="19"></th>
+              <th data-col="20"></th>
+              <th data-col="21">
+                <div class="col-filter-zakazka">
+                  <input id="f-zakazka" class="col-filter" placeholder="Zákazka">
+                  <label><input type="checkbox" id="f-zakazka-prazdna">Bez zákazky</label>
+                </div>
+              </th>
+              <th data-col="22"></th>
+              <th data-col="23"></th>
+            </tr>
+          </thead>
+          <tbody id="poruchy-tbody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ===== Prehľad ===== -->
+    <section id="view-prehlad" class="view">
+      <div class="view-header"><h1>Prehľad — zárobky podľa zákaziek</h1></div>
+      <div class="filters" style="flex-direction:column;align-items:flex-start;gap:8px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <select id="p-rok"></select>
+          <button class="btn-secondary" id="p-mesiace-vsetky" type="button">Vybrať všetky</button>
+          <button class="btn-secondary" id="p-mesiace-ziadne" type="button">Zrušiť výber</button>
+        </div>
+        <div id="p-mesiace-checkboxes" class="technik-checkboxes"></div>
+      </div>
+      <div class="card-item" style="margin-bottom:14px;">
+        <span>Súhrn za vybrané obdobie</span>
+        <b id="p-suhrn">–</b>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Číslo zákazky</th><th>Počet porúch</th><th>Tržba</th></tr></thead>
+          <tbody id="prehlad-tbody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ===== Technici ===== -->
+    <section id="view-technici" class="view">
+      <div class="view-header"><h1>Technici</h1></div>
+      <div class="add-row">
+        <input id="nt-meno" placeholder="Meno nového technika">
+        <button class="btn-primary" id="nt-add">Pridať</button>
+      </div>
+      <div class="card-list" id="technici-list"></div>
+    </section>
+
+    <!-- ===== Nastavenia ===== -->
+    <section id="view-nastavenia" class="view">
+      <div class="view-header"><h1>Nastavenia — číselníky</h1></div>
+      <div id="ciselniky-container"></div>
+    </section>
+
+    <!-- ===== Používatelia (len admin) ===== -->
+    <section id="view-pouzivatelia" class="view" data-role="admin">
+      <div class="view-header"><h1>Používatelia</h1></div>
+      <div class="add-row">
+        <input id="nu-email" type="email" placeholder="Email nového používateľa" style="width:220px;">
+        <input id="nu-heslo" type="text" placeholder="Heslo (aspoň 6 znakov)" style="width:180px;">
+        <select id="nu-rola">
+          <option value="dispecer">dispečer</option>
+          <option value="admin">admin</option>
+        </select>
+        <button class="btn-primary" id="nu-add">Vytvoriť</button>
+      </div>
+      <div class="card-list" id="pouzivatelia-list"></div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ===== Modal: úprava používateľa ===== -->
+<div class="modal-overlay hidden" id="modal-pouzivatel">
+  <div class="modal-box" style="width:420px;">
+    <h2>Upraviť používateľa</h2>
+    <div class="form-grid" style="grid-template-columns:1fr;">
+      <label>Email<input type="email" id="pu-email"></label>
+      <label>Rola<select id="pu-rola">
+        <option value="dispecer">dispečer</option>
+        <option value="admin">admin</option>
+      </select></label>
+      <label class="checkbox-row"><input type="checkbox" id="pu-aktivny"> Aktívny účet</label>
+      <label>Nové heslo (nechaj prázdne = bez zmeny)<input type="text" id="pu-heslo" placeholder="Nové heslo (aspoň 6 znakov)"></label>
+    </div>
+    <div id="pu-error" style="color:var(--cervena);font-size:13px;margin-top:8px;"></div>
+    <div class="modal-actions">
+      <button class="btn-secondary" id="pu-cancel">Zavrieť</button>
+      <button class="btn-primary" id="pu-save">Uložiť</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Modal: porucha detail/edit ===== -->
+<div class="modal-overlay hidden" id="modal-porucha">
+  <div class="modal-box">
+    <h2 id="modal-title">Porucha</h2>
+
+    <div class="paste-box" id="paste-box">
+      <label style="font-size:12px;color:var(--muted);">Rýchle vloženie zo ST MWF (ID / adresa / meno / zadané / LT — každé na samostatnom riadku)</label>
+      <textarea id="paste-input" rows="3" placeholder="Sem vlož skopírovaný blok (5 riadkov)…"></textarea>
+      <button class="btn-secondary" id="paste-fill-btn" type="button">Rozdeliť a vyplniť</button>
+      <span id="paste-status" style="font-size:12px;color:var(--muted);margin-left:8px;"></span>
+    </div>
+
+    <div class="top-id-row">
+      <label>Stav<select id="pf-stav">
+        <option value="Otvorená">Otvorená</option>
+        <option value="Zrealizovaná">Zrealizovaná</option>
+        <option value="Provizórna">Provizórna</option>
+        <option value="Stornovaná">Stornovaná</option>
+        <option value="Zaparkovaná">Zaparkovaná</option>
+      </select></label>
+      <label>Externé ID (Telekom)<input type="text" id="pf-externe_id"></label>
+    </div>
+    <div id="dup-warning" class="dup-warning-top hidden"></div>
+
+    <div class="suvisiaca-compact">
+      <div class="section-title">Súvisiaca porucha</div>
+      <input type="text" id="suvisiaca-search" placeholder="Hľadať podľa ID alebo adresy…" style="width:100%;">
+      <div id="suvisiaca-results" style="margin-top:4px;"></div>
+      <div id="suvisiaca-selected" style="margin-top:4px;"></div>
+    </div>
+
+    <div class="form-grid" id="porucha-form"></div>
+    <div id="stav-warning" class="stav-warning hidden"></div>
+
+    <div class="section-title">Priradenia technikov</div>
+
+    <div class="vytazenost-hint" id="vytazenost-hint">Vyťaženosť sa zobrazí po zvolení dátumu.</div>
+
+    <div id="priradenia-list"></div>
+
+    <div class="priradenie-add-box" id="priradenie-add-row">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:4px;">Pridať technika/technikov (dá sa vybrať viac naraz):</div>
+      <div id="pr-technik-checkboxes" class="technik-checkboxes"></div>
+      <div class="add-row" style="margin-top:6px;">
+        <input type="date" id="pr-od" title="Od">
+        <input type="date" id="pr-do" title="Do (voliteľné)">
+        <button class="btn-secondary" id="pr-add-btn" type="button">+ Priradiť vybraných</button>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-danger" id="modal-delete" style="margin-right:auto;">Zmazať poruchu</button>
+      <button class="btn-secondary" id="modal-cancel">Zavrieť</button>
+      <button class="btn-primary" id="modal-save">Uložiť</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+"use strict";
+
+// ---------------------------------------------------------------------
+// API base URL auto-detekcia (bez hardcoded URL)
+// ---------------------------------------------------------------------
+const API_BASE = (() => {
+  const host = window.location.hostname;
+  const path = window.location.pathname;
+  if (host === "localhost" || host === "127.0.0.1") {
+    return "https://poruchy-api-dev.onrender.com";
+  }
+  if (path.includes("poruchy-web-dev") || path.includes("-dev")) {
+    return "https://poruchy-api-dev.onrender.com";
+  }
+  return "https://poruchy-api.onrender.com";
+})();
+
+// ---------------------------------------------------------------------
+// Stav appky
+// ---------------------------------------------------------------------
+const state = {
+  token: null, role: null, email: null,
+  ciselniky: { dopady: [], typy: [], media: [] },
+  technici: [],
+  currentPoruchaId: null,
+  pendingPriradenia: [],
+  editingUserId: null,
+  quickFilter: null,
+  dashboardCounts: {},
+};
+
+const QUICK_FILTER_LABELS = {
+  otvorene: "Otvorené",
+  blizi_sa_lt: "Blíži sa LT 🟠",
+  po_lt: "Po LT 🔴",
+  nenaplanovane: "Nenaplánované 🔴",
+  espm_nezadane: "Nezadané ESPM",
+  espm_neschvalene: "Neschválené ESPM",
+  provizorne: "Provizórne 💚",
+};
+
+function saveAuth() {
+  localStorage.setItem("poruchy_auth", JSON.stringify({ token: state.token, role: state.role, email: state.email }));
+}
+function loadAuth() {
+  try {
+    const raw = localStorage.getItem("poruchy_auth");
+    if (!raw) return false;
+    const data = JSON.parse(raw);
+    state.token = data.token; state.role = data.role; state.email = data.email;
+    return !!state.token;
+  } catch (e) { return false; }
+}
+function clearAuth() {
+  localStorage.removeItem("poruchy_auth");
+  state.token = null; state.role = null; state.email = null;
+}
+
+function applyRoleVisibility() {
+  document.querySelectorAll("[data-role]").forEach(el => {
+    el.classList.toggle("hidden", state.role !== el.dataset.role);
+  });
+}
+
+// ---------------------------------------------------------------------
+// API helper
+// ---------------------------------------------------------------------
+async function api(path, opts = {}) {
+  const headers = Object.assign({ "Content-Type": "application/json" }, opts.headers || {});
+  if (state.token) headers["Authorization"] = "Bearer " + state.token;
+  const res = await fetch(API_BASE + path, Object.assign({}, opts, { headers }));
+  if (res.status === 401) {
+    clearAuth();
+    showLogin();
+    throw new Error("Prihlásenie vypršalo, prihlás sa znova.");
+  }
+  if (!res.ok) {
+    let detail = res.statusText;
+    try { const j = await res.json(); detail = j.detail || detail; } catch (e) {}
+    throw new Error(detail);
+  }
+  if (res.status === 204) return null;
+  return res.json();
+}
+
+// ---------------------------------------------------------------------
+// Formátovacie helpery
+// ---------------------------------------------------------------------
+function fmtDate(v) {
+  if (!v) return "";
+  const d = new Date(v);
+  if (isNaN(d)) return v;
+  return d.toLocaleDateString("sk-SK");
+}
+function fmtDateTime(v) {
+  if (!v) return "";
+  const d = new Date(v);
+  if (isNaN(d)) return v;
+  const pad = n => String(n).padStart(2, "0");
+  return d.toLocaleDateString("sk-SK") + " " + pad(d.getHours()) + ":" + pad(d.getMinutes());
+}
+function rowStavClass(r) {
+  if (r.stav === "Otvorená" && !r.planovany_datum) return "row-nenaplanovana";
+  return {
+    "Zrealizovaná": "row-zrealizovana",
+    "Provizórna": "row-provizorna",
+    "Stornovaná": "row-stornovana",
+    "Zaparkovaná": "row-zaparkovana",
+    "Otvorená": "row-otvorena",
+  }[r.stav] || "";
+}
+function fmtMoney(v) {
+  if (v === null || v === undefined) return "";
+  return Number(v).toLocaleString("sk-SK", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
+}
+function ltHoursCell(r) {
+  // Čas do/po LT v tvare hh:mm (počítané na backende ako do_po_lt_hod, v hodinách).
+  // Zelená = ešte v termíne, červená (so znamienkom mínus) = po termíne.
+  // Pri Zrealizovaná/Stornovaná je hodnota zamrznutá k dátumu realizácie,
+  // pri ostatných stavoch sa prepočítava voči aktuálnemu času (živo).
+  const h = r.do_po_lt_hod;
+  if (h === null || h === undefined) return `<span class="badge">—</span>`;
+  const sign = h < 0 ? "-" : "";
+  const totalMinutes = Math.round(Math.abs(h) * 60);
+  const hh = Math.floor(totalMinutes / 60);
+  const mm = totalMinutes % 60;
+  const pad = n => String(n).padStart(2, "0");
+  const cls = h < 0 ? "cervena" : "zelena";
+  return `<span class="badge badge-${cls}">${sign}${hh}:${pad(mm)}</span>`;
+}
+
+// ---------------------------------------------------------------------
+// Login
+// ---------------------------------------------------------------------
+function showLogin() {
+  document.getElementById("login-screen").classList.remove("hidden");
+  document.getElementById("app").classList.add("hidden");
+}
+function showApp() {
+  document.getElementById("login-screen").classList.add("hidden");
+  document.getElementById("app").classList.remove("hidden");
+  document.getElementById("current-email").textContent = state.email;
+  document.getElementById("current-role").textContent = state.role;
+  applyRoleVisibility();
+}
+
+document.getElementById("login-btn").addEventListener("click", doLogin);
+document.getElementById("login-password").addEventListener("keydown", e => { if (e.key === "Enter") doLogin(); });
+
+async function doLogin() {
+  const email = document.getElementById("login-email").value.trim();
+  const password = document.getElementById("login-password").value;
+  const errBox = document.getElementById("login-error");
+  errBox.textContent = "";
+  if (!email || !password) { errBox.textContent = "Vyplň email aj heslo."; return; }
+  try {
+    const res = await fetch(API_BASE + "/login", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      throw new Error(j.detail || "Nesprávny email alebo heslo.");
+    }
+    const data = await res.json();
+    state.token = data.token; state.role = data.role; state.email = data.email;
+    saveAuth();
+    await initApp();
+  } catch (e) {
+    errBox.textContent = e.message;
+  }
+}
+
+document.getElementById("logout-btn").addEventListener("click", () => {
+  clearAuth();
+  showLogin();
+});
+
+// ---------------------------------------------------------------------
+// Navigácia medzi sekciami
+// ---------------------------------------------------------------------
+document.querySelectorAll("#sidebar nav button").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll("#sidebar nav button").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
+    document.getElementById("view-" + btn.dataset.view).classList.add("active");
+    if (btn.dataset.view === "prehlad") loadPrehlad();
+    if (btn.dataset.view === "technici") loadTechniciView();
+    if (btn.dataset.view === "nastavenia") loadNastaveniaView();
+    if (btn.dataset.view === "pouzivatelia") loadPouzivateliaView();
+  });
+});
+
+// ---------------------------------------------------------------------
+// Dashboard (sidebar)
+// ---------------------------------------------------------------------
+async function loadDashboard() {
+  try {
+    const d = await api("/dashboard");
+    document.getElementById("stat-otvorene").textContent = d.otvorene ?? 0;
+    document.getElementById("stat-blizi").textContent = d.blizi_sa_lt ?? 0;
+    document.getElementById("stat-po-lt").textContent = d.po_lt ?? 0;
+    document.getElementById("stat-nenaplanovane").textContent = d.nenaplanovane ?? 0;
+    document.getElementById("stat-espm-nezadane").textContent = d.espm_nezadane ?? 0;
+    document.getElementById("stat-espm-neschvalene").textContent = d.espm_neschvalene ?? 0;
+    document.getElementById("stat-provizorne").textContent = d.provizorne ?? 0;
+
+    state.dashboardCounts = {
+      otvorene: d.otvorene ?? 0,
+      blizi_sa_lt: d.blizi_sa_lt ?? 0,
+      po_lt: d.po_lt ?? 0,
+      nenaplanovane: d.nenaplanovane ?? 0,
+      espm_nezadane: d.espm_nezadane ?? 0,
+      espm_neschvalene: d.espm_neschvalene ?? 0,
+      provizorne: d.provizorne ?? 0,
+    };
+    document.querySelectorAll("#sidebar-stats [data-stat-row]").forEach(row => {
+      const key = row.dataset.statRow;
+      row.classList.toggle("stat-clickable", state.dashboardCounts[key] > 0);
+    });
+  } catch (e) { console.error(e); }
+}
+
+document.querySelectorAll("#sidebar-stats [data-stat-row]").forEach(row => {
+  row.addEventListener("click", () => {
+    const key = row.dataset.statRow;
+    if (!(state.dashboardCounts[key] > 0)) return;
+    applyQuickFilter(key);
+  });
+});
+
+function applyQuickFilter(key) {
+  state.quickFilter = key;
+  ["f-stav", "f-dopad", "f-typ", "f-medium", "f-technik", "f-lt-status"].forEach(id => document.getElementById(id).value = "");
+  ["f-zadanie-od", "f-zadanie-do", "f-lt-od", "f-lt-do", "f-realizacia-od", "f-realizacia-do",
+    "f-spm-zadany-od", "f-spm-zadany-do", "f-spm-schvaleny-od", "f-spm-schvaleny-do"].forEach(id => document.getElementById(id).value = "");
+  ["f-spm-cislo", "f-zakazka"].forEach(id => document.getElementById(id).value = "");
+  document.getElementById("f-zakazka-prazdna").checked = false;
+  document.getElementById("f-zakazka").disabled = false;
+  document.getElementById("f-hladat").value = "";
+  document.querySelectorAll("#sidebar nav button").forEach(b => b.classList.remove("active"));
+  document.querySelector('#sidebar nav button[data-view="poruchy"]').classList.add("active");
+  document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
+  document.getElementById("view-poruchy").classList.add("active");
+  loadPoruchy();
+}
+
+document.getElementById("quick-filter-clear").addEventListener("click", () => {
+  state.quickFilter = null;
+  loadPoruchy();
+});
+
+// ---------------------------------------------------------------------
+// Číselníky + technici (cache)
+// ---------------------------------------------------------------------
+async function loadCiselnikyATechnici() {
+  const [dopady, typy, media, technici] = await Promise.all([
+    api("/ciselniky/dopady"), api("/ciselniky/typy"), api("/ciselniky/media"), api("/technici"),
+  ]);
+  state.ciselniky.dopady = dopady;
+  state.ciselniky.typy = typy;
+  state.ciselniky.media = media;
+  state.technici = technici;
+
+  fillSelect("f-dopad", dopady, "id", "nazov", "Všetky");
+  fillSelect("f-typ", typy, "id", "nazov", "Všetky");
+  fillSelect("f-medium", media, "id", "nazov", "Všetky");
+  fillSelect("f-technik", technici, "id", "meno", "Všetci");
+  fillSelect("f-stav", ["Otvorená","Zrealizovaná","Provizórna","Stornovaná","Zaparkovaná"].map(s => ({ id: s, nazov: s })), "id", "nazov", "Všetky");
+}
+
+function fillSelect(elId, items, valKey, labelKey, placeholder) {
+  const el = document.getElementById(elId);
+  const current = el.value;
+  el.innerHTML = "";
+  if (placeholder) {
+    const opt = document.createElement("option");
+    opt.value = ""; opt.textContent = placeholder;
+    el.appendChild(opt);
+  }
+  items.forEach(it => {
+    const opt = document.createElement("option");
+    opt.value = it[valKey]; opt.textContent = it[labelKey];
+    el.appendChild(opt);
+  });
+  el.value = current || "";
+}
+
+// ---------------------------------------------------------------------
+// Zoznam porúch
+// ---------------------------------------------------------------------
+const F_DATUM_IDS = ["f-zadanie-od", "f-zadanie-do", "f-lt-od", "f-lt-do", "f-realizacia-od", "f-realizacia-do",
+  "f-spm-zadany-od", "f-spm-zadany-do", "f-spm-schvaleny-od", "f-spm-schvaleny-do"];
+const F_TEXT_IDS = ["f-spm-cislo", "f-zakazka"];
+const F_SELECT_IDS = ["f-stav", "f-dopad", "f-typ", "f-medium", "f-technik", "f-lt-status"];
+
+[...F_SELECT_IDS, ...F_DATUM_IDS].forEach(id => {
+  document.getElementById(id).addEventListener("change", () => { state.quickFilter = null; loadPoruchy(); });
+});
+document.getElementById("f-zakazka-prazdna").addEventListener("change", () => {
+  document.getElementById("f-zakazka").disabled = document.getElementById("f-zakazka-prazdna").checked;
+  state.quickFilter = null;
+  loadPoruchy();
+});
+let hladatTimer = null;
+document.getElementById("f-hladat").addEventListener("input", () => {
+  state.quickFilter = null;
+  clearTimeout(hladatTimer);
+  hladatTimer = setTimeout(loadPoruchy, 350);
+});
+let textFilterTimer = null;
+F_TEXT_IDS.forEach(id => {
+  document.getElementById(id).addEventListener("input", () => {
+    state.quickFilter = null;
+    clearTimeout(textFilterTimer);
+    textFilterTimer = setTimeout(loadPoruchy, 350);
+  });
+});
+document.getElementById("f-reset").addEventListener("click", () => {
+  state.quickFilter = null;
+  F_SELECT_IDS.forEach(id => document.getElementById(id).value = "");
+  F_DATUM_IDS.forEach(id => document.getElementById(id).value = "");
+  F_TEXT_IDS.forEach(id => document.getElementById(id).value = "");
+  document.getElementById("f-hladat").value = "";
+  document.getElementById("f-zakazka-prazdna").checked = false;
+  document.getElementById("f-zakazka").disabled = false;
+  loadPoruchy();
+});
+
+function initColumnResize() {
+  const STORAGE_KEY = "poruchy_col_widths";
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); } catch (e) {}
+
+  document.querySelectorAll("#poruchy-thead-row th[data-col]").forEach(th => {
+    const colIdx = th.dataset.col;
+    const col = document.querySelector(`#poruchy-colgroup col[data-col="${colIdx}"]`);
+    if (!col) return;
+    if (saved[colIdx]) {
+      col.style.width = saved[colIdx] + "px";
+    }
+    const handle = document.createElement("div");
+    handle.className = "col-resize-handle";
+    th.appendChild(handle);
+    handle.addEventListener("mousedown", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const startX = e.clientX;
+      const startWidth = col.getBoundingClientRect().width;
+      handle.classList.add("resizing");
+      function onMove(ev) {
+        const newWidth = Math.max(30, Math.round(startWidth + (ev.clientX - startX)));
+        col.style.width = newWidth + "px";
+      }
+      function onUp() {
+        handle.classList.remove("resizing");
+        document.removeEventListener("mousemove", onMove);
+        document.removeEventListener("mouseup", onUp);
+        saved[colIdx] = parseInt(col.style.width, 10);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
+      }
+      document.addEventListener("mousemove", onMove);
+      document.addEventListener("mouseup", onUp);
+    });
+  });
+}
+initColumnResize();
+
+async function loadPoruchy() {
+  const banner = document.getElementById("quick-filter-banner");
+  if (state.quickFilter) {
+    document.getElementById("quick-filter-text").textContent =
+      "Rýchly filter: " + (QUICK_FILTER_LABELS[state.quickFilter] || state.quickFilter);
+    banner.classList.remove("hidden");
+  } else {
+    banner.classList.add("hidden");
+  }
+
+  const params = new URLSearchParams();
+  if (state.quickFilter) {
+    params.set("rychly", state.quickFilter);
+  } else {
+    const stav = document.getElementById("f-stav").value;
+    const dopad = document.getElementById("f-dopad").value;
+    const typ = document.getElementById("f-typ").value;
+    const medium = document.getElementById("f-medium").value;
+    const technik = document.getElementById("f-technik").value;
+    const hladat = document.getElementById("f-hladat").value.trim();
+    const zadanieOd = document.getElementById("f-zadanie-od").value;
+    const zadanieDo = document.getElementById("f-zadanie-do").value;
+    const ltOd = document.getElementById("f-lt-od").value;
+    const ltDo = document.getElementById("f-lt-do").value;
+    const realizaciaOd = document.getElementById("f-realizacia-od").value;
+    const realizaciaDo = document.getElementById("f-realizacia-do").value;
+    const spmZadanyOd = document.getElementById("f-spm-zadany-od").value;
+    const spmZadanyDo = document.getElementById("f-spm-zadany-do").value;
+    const spmSchvalenyOd = document.getElementById("f-spm-schvaleny-od").value;
+    const spmSchvalenyDo = document.getElementById("f-spm-schvaleny-do").value;
+    const spmCislo = document.getElementById("f-spm-cislo").value.trim();
+    const ltStatus = document.getElementById("f-lt-status").value;
+    const zakazkaPrazdna = document.getElementById("f-zakazka-prazdna").checked;
+    const zakazka = document.getElementById("f-zakazka").value.trim();
+    if (stav) params.set("stav", stav);
+    if (dopad) params.set("dopad_id", dopad);
+    if (typ) params.set("typ_id", typ);
+    if (medium) params.set("medium_id", medium);
+    if (technik) params.set("technik_id", technik);
+    if (hladat) params.set("hladat", hladat);
+    if (zadanieOd) params.set("zadanie_od", zadanieOd);
+    if (zadanieDo) params.set("zadanie_do", zadanieDo);
+    if (ltOd) params.set("lt_od", ltOd);
+    if (ltDo) params.set("lt_do", ltDo);
+    if (realizaciaOd) params.set("realizacia_od", realizaciaOd);
+    if (realizaciaDo) params.set("realizacia_do", realizaciaDo);
+    if (spmZadanyOd) params.set("spm_zadany_od", spmZadanyOd);
+    if (spmZadanyDo) params.set("spm_zadany_do", spmZadanyDo);
+    if (spmSchvalenyOd) params.set("spm_schvaleny_od", spmSchvalenyOd);
+    if (spmSchvalenyDo) params.set("spm_schvaleny_do", spmSchvalenyDo);
+    if (spmCislo) params.set("spm_cislo", spmCislo);
+    if (ltStatus) params.set("lt_filter", ltStatus);
+    if (zakazkaPrazdna) {
+      params.set("cislo_zakazky_prazdne", "true");
+    } else if (zakazka) {
+      params.set("cislo_zakazky", zakazka);
+    }
+  }
+
+  const tbody = document.getElementById("poruchy-tbody");
+  tbody.innerHTML = "<tr><td colspan='24'>Načítavam…</td></tr>";
+  try {
+    const rows = await api("/poruchy?" + params.toString());
+    renderPoruchyTable(rows);
+  } catch (e) {
+    tbody.innerHTML = "<tr><td colspan='24'>Chyba: " + e.message + "</td></tr>";
+  }
+}
+
+function renderPoruchyTable(rows) {
+  const tbody = document.getElementById("poruchy-tbody");
+  if (!rows.length) { tbody.innerHTML = "<tr><td colspan='24'>Žiadne záznamy.</td></tr>"; return; }
+  tbody.innerHTML = "";
+  rows.forEach(r => {
+    const tr = document.createElement("tr");
+    tr.className = rowStavClass(r);
+    tr.addEventListener("click", () => openPoruchaModal(r.id));
+    const popis = r.popis || "", adresa = r.adresa || "", meno = r.meno_subjekt || "", real = r.technici_aktivni || "";
+    tr.innerHTML = `
+      <td>${r.stav}</td>
+      <td>${r.externe_id || ""}</td>
+      <td>${r.dopad_kod || ""}</td>
+      <td>${r.typ_kod || ""}</td>
+      <td>${r.siet ? "Áno" : "Nie"}</td>
+      <td>${r.medium_kod || ""}</td>
+      <td title="${escapeHtml(popis)}">${escapeHtml(popis)}</td>
+      <td title="${escapeHtml(adresa)}">${escapeHtml(adresa)}</td>
+      <td title="${escapeHtml(meno)}">${escapeHtml(meno)}</td>
+      <td>${fmtDateTime(r.datum_zadania)}</td>
+      <td>${fmtDateTime(r.lt_vybavit_do)}</td>
+      <td>${fmtDateTime(r.datum_realizacie)}</td>
+      <td>${fmtDateTime(r.planovany_datum)}</td>
+      <td>${ltHoursCell(r)}</td>
+      <td title="${escapeHtml(real)}">${escapeHtml(real)}</td>
+      <td>${r.spm_zadany_neuctuje_sa ? "neúčtuje sa" : fmtDate(r.spm_zadany)}</td>
+      <td>${r.spm_schvaleny_neuctuje_sa ? "neúčtuje sa" : fmtDate(r.spm_schvaleny)}</td>
+      <td>${r.spm_cislo || ""}</td>
+      <td>${r.cena_prace_neuctuje_sa ? "neúčtuje sa" : fmtMoney(r.cena_prace)}</td>
+      <td>${r.cena_materialu_neuctuje_sa ? "neúčtuje sa" : fmtMoney(r.cena_materialu)}</td>
+      <td>${fmtMoney(r.trzba_spolu)}</td>
+      <td>${r.cislo_zakazky || ""}</td>
+      <td>${r.faktura_stav || ""}</td>
+      <td title="${escapeHtml(r.poznamka || "")}">${escapeHtml(r.poznamka || "")}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function escapeHtml(s) {
+  const d = document.createElement("div");
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+// ---------------------------------------------------------------------
+// Modal: vytvorenie / editácia poruchy
+// ---------------------------------------------------------------------
+const PORUCHA_FIELDS = [
+  { key: "dopad_id", label: "Dopad", type: "ciselnik", cis: "dopady" },
+  { key: "typ_id", label: "Typ", type: "ciselnik", cis: "typy" },
+  { key: "medium_id", label: "Médium", type: "ciselnik", cis: "media" },
+  { key: "siet", label: "Sieťová porucha", type: "checkbox" },
+  { key: "popis", label: "Popis", type: "text-list", full: true },
+  { key: "adresa", label: "Adresa", type: "text", full: true },
+  { key: "meno_subjekt", label: "Meno / Subjekt", type: "text" },
+  { key: "datum_zadania", label: "Dátum zadania", type: "datetime" },
+  { key: "lt_vybavit_do", label: "LT – vybaviť do", type: "datetime" },
+  { key: "planovany_datum", label: "Plánovaný dátum", type: "datetime" },
+  { key: "datum_realizacie", label: "Dátum realizácie", type: "datetime" },
+  { key: "spm_zadany", label: "SPM zadaný", type: "date" },
+  { key: "spm_zadany_neuctuje_sa", label: "SPM zadaný – neúčtuje sa", type: "checkbox" },
+  { key: "spm_schvaleny", label: "SPM schválený", type: "date" },
+  { key: "spm_schvaleny_neuctuje_sa", label: "SPM schválený – neúčtuje sa", type: "checkbox" },
+  { key: "spm_cislo", label: "SPM číslo", type: "text" },
+  { key: "cena_prace", label: "Cena práce (€)", type: "number" },
+  { key: "cena_prace_neuctuje_sa", label: "Cena práce – neúčtuje sa", type: "checkbox" },
+  { key: "cena_materialu", label: "Cena materiálu (€)", type: "number" },
+  { key: "cena_materialu_neuctuje_sa", label: "Cena materiálu – neúčtuje sa", type: "checkbox" },
+  { key: "cislo_zakazky", label: "Číslo zákazky", type: "text" },
+  { key: "faktura_stav", label: "Faktúra", type: "select", options: ["Pripravená","Odoslaná","Neúčtuje sa"], allowEmpty: true },
+  { key: "poznamka", label: "Poznámka", type: "text-list", full: true },
+];
+
+let popisHistory = [];
+
+function inputHtmlFor(f, value) {
+  const id = "pf-" + f.key;
+  if (f.type === "checkbox") {
+    return `<label class="checkbox-row"><input type="checkbox" id="${id}" ${value ? "checked" : ""}> ${f.label}</label>`;
+  }
+  if (f.type === "select") {
+    const opts = (f.allowEmpty ? ['<option value="">–</option>'] : []).concat(
+      f.options.map(o => `<option value="${o}" ${value === o ? "selected" : ""}>${o}</option>`)
+    ).join("");
+    return `<label>${f.label}<select id="${id}">${opts}</select></label>`;
+  }
+  if (f.type === "ciselnik") {
+    const items = state.ciselniky[f.cis] || [];
+    const opts = ['<option value="">–</option>'].concat(
+      items.map(it => `<option value="${it.id}" ${String(value) === String(it.id) ? "selected" : ""}>${it.nazov} (${it.kod})</option>`)
+    ).join("");
+    return `<label>${f.label}<select id="${id}">${opts}</select></label>`;
+  }
+  if (f.type === "datetime") {
+    const v = value ? toLocalDatetimeInput(value) : "";
+    return `<label>${f.label}<input type="datetime-local" id="${id}" value="${v}"></label>`;
+  }
+  if (f.type === "date") {
+    const v = value ? String(value).slice(0, 10) : "";
+    return `<label>${f.label}<input type="date" id="${id}" value="${v}"></label>`;
+  }
+  if (f.type === "number") {
+    return `<label>${f.label}<input type="number" step="0.01" id="${id}" value="${value ?? ""}"></label>`;
+  }
+  if (f.type === "text-list") {
+    const listId = id + "-list";
+    return `<label class="${f.full ? "full" : ""}">${f.label}
+      <input list="${listId}" id="${id}" value="${escapeHtml(value || "")}">
+      <datalist id="${listId}">${popisHistory.map(p => `<option value="${escapeHtml(p)}">`).join("")}</datalist>
+    </label>`;
+  }
+  return `<label class="${f.full ? "full" : ""}">${f.label}<input type="text" id="${id}" value="${escapeHtml(value || "")}"></label>`;
+}
+
+function toLocalDatetimeInput(iso) {
+  const d = new Date(iso);
+  if (isNaN(d)) return "";
+  const pad = n => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+let savingPorucha = false;
+
+function todayStr() {
+  const d = new Date();
+  const pad = n => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+function addDaysStr(dateStr, days) {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const dt = new Date(y, m - 1, d);
+  dt.setDate(dt.getDate() + days);
+  const pad = n => String(n).padStart(2, "0");
+  return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`;
+}
+
+async function openPoruchaModal(id) {
+  state.currentPoruchaId = id;
+  state.pendingPriradenia = [];
+  const modal = document.getElementById("modal-porucha");
+  const form = document.getElementById("porucha-form");
+  document.getElementById("modal-title").textContent = id ? "Upraviť poruchu" : "Nová porucha";
+  document.getElementById("modal-delete").classList.toggle("hidden", !id);
+  document.getElementById("paste-input").value = "";
+  document.getElementById("paste-status").textContent = "";
+  document.getElementById("stav-warning").classList.add("hidden");
+
+  let data = {};
+  if (id) {
+    data = await api("/poruchy/" + id);
+  } else {
+    data = { stav: "Otvorená" };
+  }
+
+  // história popisov pre autocomplete (Popis je 7. stĺpec v tabuľke)
+  popisHistory = Array.from(new Set(
+    Array.from(document.querySelectorAll("#poruchy-tbody tr td:nth-child(7)")).map(td => td.textContent).filter(Boolean)
+  ));
+
+  form.innerHTML = PORUCHA_FIELDS.map(f => inputHtmlFor(f, data[f.key])).join("");
+
+  // Stav + Externé ID sú statické polia mimo dynamického form-grid (kvôli pozícii hore)
+  document.getElementById("pf-stav").value = data.stav || "Otvorená";
+  document.getElementById("pf-externe_id").value = data.externe_id || "";
+  document.getElementById("dup-warning").classList.add("hidden");
+
+  // stav <-> dátum realizácie: vynútenie priamo v UI
+  const realEl = document.getElementById("pf-datum_realizacie");
+  realEl.addEventListener("input", handleStavChange);
+  handleStavChange();
+
+  // súvisiaca porucha - vyhľadávanie
+  setupSuvisiacaPoruchaField(data.suvisiaca_porucha_id || null, id);
+
+  // priradenia
+  renderTechnikCheckboxes();
+  document.getElementById("pr-od").value = "";
+  document.getElementById("pr-od").classList.remove("pr-od-auto");
+  document.getElementById("pr-do").value = "";
+  if (id) {
+    renderPriradeniaList(data.priradenia || []);
+  } else {
+    renderPendingPriradeniaList();
+  }
+
+  // vyťaženosť - vždy viditeľná, prepočíta sa pri zmene plánovaného dátumu; dátum 'od' sa auto-vyplní
+  const planEl = document.getElementById("pf-planovany_datum");
+  planEl.addEventListener("change", () => { autoFillPrOdFromPlan(); refreshVytazenostForModal(); });
+  autoFillPrOdFromPlan();
+  refreshVytazenostForModal();
+
+  modal.classList.remove("hidden");
+}
+
+function autoFillPrOdFromPlan() {
+  const planEl = document.getElementById("pf-planovany_datum");
+  const prOd = document.getElementById("pr-od");
+  if (!planEl || !prOd || !planEl.value) return;
+  const dateOnly = planEl.value.slice(0, 10);
+  if (!prOd.value || prOd.classList.contains("pr-od-auto")) {
+    prOd.value = dateOnly;
+    prOd.classList.add("pr-od-auto");
+  }
+}
+
+async function setupSuvisiacaPoruchaField(currentId, poruchaId) {
+  state.selectedSuvisiacaId = currentId || null;
+  const searchEl = document.getElementById("suvisiaca-search");
+  const resultsEl = document.getElementById("suvisiaca-results");
+  const selectedEl = document.getElementById("suvisiaca-selected");
+  searchEl.value = "";
+  resultsEl.innerHTML = "";
+
+  async function renderSelected() {
+    if (!state.selectedSuvisiacaId) {
+      selectedEl.innerHTML = "<span style='color:var(--muted);'>Žiadna súvisiaca porucha.</span>";
+      return;
+    }
+    try {
+      const p = await api("/poruchy/" + state.selectedSuvisiacaId);
+      selectedEl.innerHTML = `Súvisí s: <b>${escapeHtml(p.externe_id || ("#" + p.id))}</b> — ${escapeHtml(p.adresa || "")} <button type="button" class="btn-secondary" id="suvisiaca-clear-btn" style="padding:2px 8px;font-size:12px;margin-left:6px;">Odobrať</button>`;
+      document.getElementById("suvisiaca-clear-btn").addEventListener("click", () => {
+        state.selectedSuvisiacaId = null;
+        renderSelected();
+      });
+    } catch (e) {
+      selectedEl.textContent = "Súvisiaca porucha (ID " + state.selectedSuvisiacaId + ") sa nepodarilo načítať.";
+    }
+  }
+  renderSelected();
+
+  let searchTimer = null;
+  searchEl.addEventListener("input", () => {
+    clearTimeout(searchTimer);
+    const q = searchEl.value.trim();
+    if (!q) { resultsEl.innerHTML = ""; return; }
+    searchTimer = setTimeout(async () => {
+      try {
+        const rows = await api("/poruchy?hladat=" + encodeURIComponent(q) + "&limit=8");
+        const filtered = rows.filter(r => r.id !== poruchaId);
+        if (!filtered.length) { resultsEl.innerHTML = "<div style='font-size:12px;color:var(--muted);'>Nič nenájdené.</div>"; return; }
+        resultsEl.innerHTML = filtered.map(r => `
+          <div class="priradenie-row" style="cursor:pointer;" data-pick-id="${r.id}">
+            <span class="pr-info"><b>${escapeHtml(r.externe_id || ("#" + r.id))}</b> — ${escapeHtml(r.adresa || "")} <i>(${r.stav})</i></span>
+          </div>
+        `).join("");
+        resultsEl.querySelectorAll("[data-pick-id]").forEach(el => {
+          el.addEventListener("click", () => {
+            state.selectedSuvisiacaId = Number(el.dataset.pickId);
+            searchEl.value = "";
+            resultsEl.innerHTML = "";
+            renderSelected();
+          });
+        });
+      } catch (e) { /* tichá chyba pri vyhľadávaní */ }
+    }, 300);
+  });
+}
+
+async function checkDuplicateExterneId(val) {
+  const warn = document.getElementById("dup-warning");
+  const value = (val || "").trim();
+  if (!value) { warn.classList.add("hidden"); return; }
+  try {
+    const rows = await api("/poruchy?hladat=" + encodeURIComponent(value));
+    const match = rows.find(r =>
+      (r.externe_id || "").trim().toLowerCase() === value.toLowerCase() &&
+      r.id !== state.currentPoruchaId
+    );
+    if (match) {
+      warn.textContent = `⚠ Porucha s ID '${value}' už v systéme existuje (stav: ${match.stav}, adresa: ${match.adresa || "-"}). Skontroluj, či nejde o duplicitu.`;
+      warn.classList.remove("hidden");
+    } else {
+      warn.classList.add("hidden");
+    }
+  } catch (e) { /* tichá chyba - nejde o kritickú funkciu */ }
+}
+
+function handleStavChange() {
+  const stavEl = document.getElementById("pf-stav");
+  const realEl = document.getElementById("pf-datum_realizacie");
+  const warnBox = document.getElementById("stav-warning");
+  if (!stavEl || !realEl) return;
+  const stav = stavEl.value;
+  if (stav === "Otvorená") {
+    realEl.value = "";
+    realEl.disabled = true;
+    warnBox.classList.add("hidden");
+  } else if (stav === "Zrealizovaná" || stav === "Stornovaná" || stav === "Provizórna") {
+    realEl.disabled = false;
+    if (!realEl.value) {
+      warnBox.textContent = `Stav '${stav}' vyžaduje vyplnený dátum realizácie — bez neho sa porucha neuloží.`;
+      warnBox.classList.remove("hidden");
+    } else {
+      warnBox.classList.add("hidden");
+    }
+  } else {
+    realEl.disabled = false;
+    warnBox.classList.add("hidden");
+  }
+}
+
+function relevantVytazenostDate() {
+  const planEl = document.getElementById("pf-planovany_datum");
+  return planEl && planEl.value ? planEl.value.slice(0, 10) : todayStr();
+}
+
+function renderTechnikCheckboxes() {
+  const el = document.getElementById("pr-technik-checkboxes");
+  if (!state.technici.length) { el.innerHTML = "<span style='color:var(--muted);font-size:13px;'>Zatiaľ žiadni technici — pridaj ich v sekcii Technici.</span>"; return; }
+  el.innerHTML = state.technici.map(t => `
+    <label><input type="checkbox" class="pr-tech-cb" value="${t.id}" data-meno="${escapeHtml(t.meno)}"> ${escapeHtml(t.meno)}</label>
+  `).join("");
+}
+
+function renderPendingPriradeniaList() {
+  const el = document.getElementById("priradenia-list");
+  if (!state.pendingPriradenia.length) {
+    el.innerHTML = "<p style='color:var(--muted);font-size:13px;'>Zatiaľ žiadni priradení technici (priradia sa hneď po uložení poruchy).</p>";
+    return;
+  }
+  el.innerHTML = state.pendingPriradenia.map((p, idx) => `
+    <div class="priradenie-row">
+      <span class="pr-info"><b>${escapeHtml(p.technik_meno)}</b> — ${fmtDate(p.datum_od)} ${p.datum_do ? "→ " + fmtDate(p.datum_do) : "(bez konca)"} <i>(priradí sa po uložení)</i></span>
+      <button class="btn-secondary" data-pending-remove="${idx}" type="button">Odobrať</button>
+    </div>
+  `).join("");
+  el.querySelectorAll("[data-pending-remove]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      state.pendingPriradenia.splice(Number(btn.dataset.pendingRemove), 1);
+      renderPendingPriradeniaList();
+    });
+  });
+}
+
+function renderPriradeniaList(items) {
+  const el = document.getElementById("priradenia-list");
+  if (!items.length) { el.innerHTML = "<p style='color:var(--muted);font-size:13px;'>Zatiaľ žiadni priradení technici.</p>"; return; }
+  el.innerHTML = items.map(p => {
+    const aktivny = !p.datum_do || p.datum_do > todayStr();
+    return `
+      <div class="priradenie-row">
+        <span class="pr-info"><b>${escapeHtml(p.technik_meno)}</b> — ${fmtDate(p.datum_od)} ${p.datum_do ? "→ " + fmtDate(p.datum_do) : "(aktívny)"}</span>
+        ${aktivny ? `<button class="btn-secondary" data-priradenie-end="${p.id}" type="button">Ukončiť dnes</button>` : ""}
+        <button class="btn-secondary" data-priradenie-edit="${p.id}" type="button">Upraviť</button>
+        <button class="btn-danger" data-priradenie-del="${p.id}" type="button">Zmazať</button>
+      </div>
+      <div class="priradenie-edit-row hidden" id="pr-edit-box-${p.id}">
+        <select id="pr-edit-technik-${p.id}"></select>
+        <input type="date" id="pr-edit-od-${p.id}" value="${p.datum_od}">
+        <input type="date" id="pr-edit-do-${p.id}" value="${p.datum_do || ''}">
+        <button class="btn-primary" data-priradenie-save="${p.id}" type="button">Uložiť zmeny</button>
+        <button class="btn-secondary" data-priradenie-cancel="${p.id}" type="button">Zrušiť</button>
+      </div>
+    `;
+  }).join("");
+
+  items.forEach(p => {
+    fillSelect(`pr-edit-technik-${p.id}`, state.technici, "id", "meno", null);
+    const s = document.getElementById(`pr-edit-technik-${p.id}`);
+    if (s) s.value = p.technik_id;
+  });
+
+  el.querySelectorAll("[data-priradenie-end]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      try {
+        await api("/priradenia/" + btn.dataset.priradenieEnd, { method: "PATCH", body: JSON.stringify({ datum_do: todayStr() }) });
+        await refreshPriradeniaAfterChange();
+      } catch (e) { alert("Chyba: " + e.message); }
+    });
+  });
+  el.querySelectorAll("[data-priradenie-edit]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.getElementById("pr-edit-box-" + btn.dataset.priradenieEdit).classList.toggle("hidden");
+    });
+  });
+  el.querySelectorAll("[data-priradenie-cancel]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.getElementById("pr-edit-box-" + btn.dataset.priradenieCancel).classList.add("hidden");
+    });
+  });
+  el.querySelectorAll("[data-priradenie-del]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      if (!confirm("Naozaj zmazať toto priradenie technika k poruche?")) return;
+      try {
+        await api("/priradenia/" + btn.dataset.priradenieDel, { method: "DELETE" });
+        await refreshPriradeniaAfterChange();
+      } catch (e) { alert("Chyba: " + e.message); }
+    });
+  });
+  el.querySelectorAll("[data-priradenie-save]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const pid = btn.dataset.priradenieSave;
+      const technik_id = Number(document.getElementById("pr-edit-technik-" + pid).value);
+      const datum_od = document.getElementById("pr-edit-od-" + pid).value;
+      const datum_do = document.getElementById("pr-edit-do-" + pid).value || null;
+      if (datum_do && datum_do < datum_od) { alert("Dátum 'do' nemôže byť skorší ako dátum 'od'."); return; }
+      try {
+        await api("/priradenia/" + pid, { method: "PATCH", body: JSON.stringify({ technik_id, datum_od, datum_do }) });
+        await refreshPriradeniaAfterChange();
+      } catch (e) { alert("Chyba: " + e.message); }
+    });
+  });
+}
+
+async function refreshPriradeniaAfterChange() {
+  const data = await api("/poruchy/" + state.currentPoruchaId);
+  renderPriradeniaList(data.priradenia || []);
+  loadPoruchy();
+  refreshVytazenostForModal();
+}
+
+document.getElementById("pr-add-btn").addEventListener("click", async () => {
+  const checked = Array.from(document.querySelectorAll(".pr-tech-cb:checked"));
+  const datum_od = document.getElementById("pr-od").value;
+  const datum_do = document.getElementById("pr-do").value || null;
+  if (!checked.length) { alert("Zaškrtni aspoň jedného technika."); return; }
+  if (!datum_od) { alert("Vyplň dátum od."); return; }
+  if (datum_do && datum_do < datum_od) { alert("Dátum 'do' nemôže byť skorší ako dátum 'od'."); return; }
+
+  try {
+    const vyt = await api("/technici/vytazenost?datum=" + datum_od);
+    const preTazeni = checked
+      .map(cb => ({ meno: cb.dataset.meno, rec: vyt.find(v => String(v.id) === String(cb.value)) }))
+      .filter(x => x.rec && x.rec.pocet_poruch > 0);
+    if (preTazeni.length) {
+      const zoznam = preTazeni.map(x => `${x.meno} (už ${x.rec.pocet_poruch})`).join(", ");
+      if (!confirm(`Títo technici už majú v tento deň priradené poruchy: ${zoznam}. Naozaj pokračovať?`)) return;
+    }
+
+    if (state.currentPoruchaId) {
+      for (const cb of checked) {
+        await api("/priradenia", {
+          method: "POST",
+          body: JSON.stringify({ porucha_id: state.currentPoruchaId, technik_id: Number(cb.value), datum_od, datum_do }),
+        });
+      }
+      const data = await api("/poruchy/" + state.currentPoruchaId);
+      renderPriradeniaList(data.priradenia || []);
+      loadPoruchy();
+    } else {
+      checked.forEach(cb => {
+        state.pendingPriradenia.push({ technik_id: Number(cb.value), technik_meno: cb.dataset.meno, datum_od, datum_do });
+      });
+      renderPendingPriradeniaList();
+    }
+    document.querySelectorAll(".pr-tech-cb:checked").forEach(cb => cb.checked = false);
+    document.getElementById("pr-od").value = "";
+    document.getElementById("pr-od").classList.remove("pr-od-auto");
+    document.getElementById("pr-do").value = "";
+    refreshVytazenostForModal();
+  } catch (e) {
+    alert("Chyba: " + e.message);
+  }
+});
+
+function refreshVytazenostForModal() {
+  showVytazenost3Days(relevantVytazenostDate());
+}
+
+async function showVytazenost3Days(baseDateStr) {
+  const hint = document.getElementById("vytazenost-hint");
+  const dates = [0, 1, 2].map(i => addDaysStr(baseDateStr, i));
+  try {
+    const results = await Promise.all(dates.map(d => api("/technici/vytazenost?datum=" + d)));
+    if (!results[0].length) { hint.innerHTML = "Zatiaľ nie sú zadaní žiadni technici."; return; }
+    const technici = results[0].map(t => t.meno);
+    let html = `<b>Vyťaženosť technikov od ${fmtDate(dates[0])}:</b>`;
+    html += `<table class="vytazenost-3day"><thead><tr><th></th>${dates.map(d => `<th>${fmtDate(d)}</th>`).join("")}</tr></thead><tbody>`;
+    technici.forEach((meno, idx) => {
+      html += `<tr><td class="vt-tech">${escapeHtml(meno)}</td>`;
+      results.forEach(r => {
+        const pocet = r[idx] ? r[idx].pocet_poruch : 0;
+        const cls = pocet >= 2 ? "vt-2" : (pocet === 1 ? "vt-1" : "vt-0");
+        html += `<td class="${cls}">${pocet}</td>`;
+      });
+      html += `</tr>`;
+    });
+    html += `</tbody></table>`;
+    hint.innerHTML = html;
+  } catch (e) { hint.textContent = "Vyťaženosť sa nepodarilo načítať."; }
+}
+
+// ---------------------------------------------------------------------
+// Rýchle vloženie bloku zo ST MWF (ID / adresa / meno / zadané / LT do)
+// ---------------------------------------------------------------------
+function parseSkDatetime(s) {
+  const m = s.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})\s+(\d{1,2}):(\d{2})/);
+  if (!m) return null;
+  const [, d, mo, y, h, mi] = m;
+  const pad = n => String(n).padStart(2, "0");
+  return `${y}-${pad(mo)}-${pad(d)}T${pad(h)}:${pad(mi)}`;
+}
+
+document.getElementById("paste-fill-btn").addEventListener("click", () => {
+  const raw = document.getElementById("paste-input").value;
+  const lines = raw.split("\n").map(l => l.trim()).filter(l => l !== "");
+  const statusEl = document.getElementById("paste-status");
+  if (lines.length < 5) {
+    statusEl.style.color = "var(--cervena)";
+    statusEl.textContent = "Očakávam 5 riadkov: ID, adresa, meno, zadané, LT do.";
+    return;
+  }
+  const [idLine, adresaLine, menoLine, zadanieLine, ltLine] = lines;
+
+  const externeIdEl = document.getElementById("pf-externe_id");
+  const adresaEl = document.getElementById("pf-adresa");
+  const menoEl = document.getElementById("pf-meno_subjekt");
+  const zadanieEl = document.getElementById("pf-datum_zadania");
+  const ltEl = document.getElementById("pf-lt_vybavit_do");
+
+  if (externeIdEl) externeIdEl.value = idLine;
+  if (adresaEl) adresaEl.value = adresaLine;
+  if (menoEl) menoEl.value = (menoLine === "-" ? "" : menoLine);
+  const zadanieVal = parseSkDatetime(zadanieLine);
+  if (zadanieEl && zadanieVal) zadanieEl.value = zadanieVal;
+  const ltVal = parseSkDatetime(ltLine);
+  if (ltEl && ltVal) ltEl.value = ltVal;
+
+  // hodnota bola nastavená programovo, nie napísaním - "input" event sa nespustí sám,
+  // preto kontrolu duplicity spúšťame explicitne
+  if (externeIdEl) checkDuplicateExterneId(idLine);
+
+  statusEl.style.color = "var(--zelena)";
+  statusEl.textContent = "Vyplnené — skontroluj a doplň Dopad/Typ/Médium/Popis.";
+});
+
+document.getElementById("modal-cancel").addEventListener("click", () => {
+  document.getElementById("modal-porucha").classList.add("hidden");
+});
+
+// Stav a Externé ID sú statické polia (nie sú súčasťou dynamicky generovaného
+// form-grid) - ich listenery sa registrujú raz, nie pri každom otvorení modalu.
+document.getElementById("pf-stav").addEventListener("change", handleStavChange);
+let dupTimer = null;
+document.getElementById("pf-externe_id").addEventListener("input", (e) => {
+  clearTimeout(dupTimer);
+  const val = e.target.value;
+  dupTimer = setTimeout(() => checkDuplicateExterneId(val), 400);
+});
+
+document.getElementById("btn-nova-porucha").addEventListener("click", () => openPoruchaModal(null));
+
+document.getElementById("btn-export-excel").addEventListener("click", async (e) => {
+  const btn = e.currentTarget;
+  const pôvodnýText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = "Exportujem…";
+  try {
+    const res = await fetch(API_BASE + "/export/excel", {
+      headers: { "Authorization": "Bearer " + state.token },
+    });
+    if (!res.ok) throw new Error("Export zlyhal (" + res.status + ")");
+    const blob = await res.blob();
+    const cd = res.headers.get("Content-Disposition") || "";
+    const match = cd.match(/filename="?([^"]+)"?/);
+    const filename = match ? match[1] : "poruchy_export.xlsx";
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    alert("Export sa nepodarilo stiahnuť: " + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = pôvodnýText;
+  }
+});
+
+document.getElementById("modal-delete").addEventListener("click", async () => {
+  if (!state.currentPoruchaId) return;
+  if (!confirm("Naozaj natrvalo zmazať túto poruchu? Táto akcia sa nedá vrátiť späť.")) return;
+  try {
+    await api("/poruchy/" + state.currentPoruchaId, { method: "DELETE" });
+    document.getElementById("modal-porucha").classList.add("hidden");
+    loadPoruchy();
+    loadDashboard();
+  } catch (e) {
+    alert("Chyba pri mazaní: " + e.message);
+  }
+});
+
+document.getElementById("modal-save").addEventListener("click", async () => {
+  if (savingPorucha) return;
+
+  const stavEl = document.getElementById("pf-stav");
+  const realEl = document.getElementById("pf-datum_realizacie");
+  if ((stavEl.value === "Zrealizovaná" || stavEl.value === "Stornovaná" || stavEl.value === "Provizórna") && !realEl.value) {
+    alert(`Stav '${stavEl.value}' vyžaduje vyplnený dátum realizácie.`);
+    return;
+  }
+
+  const payload = {
+    stav: stavEl.value,
+    externe_id: document.getElementById("pf-externe_id").value || null,
+  };
+  PORUCHA_FIELDS.forEach(f => {
+    const el = document.getElementById("pf-" + f.key);
+    if (!el) return;
+    if (f.type === "checkbox") { payload[f.key] = el.checked; return; }
+    if (f.type === "ciselnik") { payload[f.key] = el.value ? Number(el.value) : null; return; }
+    if (f.type === "number") { payload[f.key] = el.value === "" ? null : Number(el.value); return; }
+    if (f.type === "datetime") { payload[f.key] = el.value ? new Date(el.value).toISOString() : null; return; }
+    if (f.type === "date") { payload[f.key] = el.value || null; return; }
+    payload[f.key] = el.value || null;
+  });
+  if (payload.stav === "Otvorená") payload.datum_realizacie = null;
+  payload.suvisiaca_porucha_id = state.selectedSuvisiacaId || null;
+
+  const saveBtn = document.getElementById("modal-save");
+  savingPorucha = true;
+  saveBtn.disabled = true;
+  const originalLabel = saveBtn.textContent;
+  saveBtn.textContent = "Ukladám…";
+
+  try {
+    if (state.currentPoruchaId) {
+      await api("/poruchy/" + state.currentPoruchaId, { method: "PUT", body: JSON.stringify(payload) });
+    } else {
+      const created = await api("/poruchy", { method: "POST", body: JSON.stringify(payload) });
+      state.currentPoruchaId = created.id;
+      for (const p of state.pendingPriradenia) {
+        await api("/priradenia", {
+          method: "POST",
+          body: JSON.stringify({ porucha_id: created.id, technik_id: p.technik_id, datum_od: p.datum_od, datum_do: p.datum_do }),
+        });
+      }
+      state.pendingPriradenia = [];
+    }
+    document.getElementById("modal-porucha").classList.add("hidden");
+    loadPoruchy();
+    loadDashboard();
+  } catch (e) {
+    alert("Chyba pri ukladaní: " + e.message);
+  } finally {
+    savingPorucha = false;
+    saveBtn.disabled = false;
+    saveBtn.textContent = originalLabel;
+  }
+});
+
+// ---------------------------------------------------------------------
+// Prehľad
+// ---------------------------------------------------------------------
+const MESIACE_NAZVY = ["Január","Február","Marec","Apríl","Máj","Jún","Júl","August","September","Október","November","December"];
+
+function initPrehladSelectors() {
+  const rokSel = document.getElementById("p-rok");
+  const cbBox = document.getElementById("p-mesiace-checkboxes");
+  const now = new Date();
+
+  let rokOpts = "";
+  for (let r = now.getFullYear(); r >= now.getFullYear() - 3; r--) {
+    rokOpts += `<option value="${r}" ${r === now.getFullYear() ? "selected" : ""}>${r}</option>`;
+  }
+  rokSel.innerHTML = rokOpts;
+
+  cbBox.innerHTML = MESIACE_NAZVY.map((m, i) => `
+    <label><input type="checkbox" class="p-mesiac-cb" value="${i + 1}" checked> ${m}</label>
+  `).join("");
+
+  rokSel.addEventListener("change", loadPrehlad);
+  cbBox.querySelectorAll(".p-mesiac-cb").forEach(cb => cb.addEventListener("change", loadPrehlad));
+
+  document.getElementById("p-mesiace-vsetky").addEventListener("click", () => {
+    cbBox.querySelectorAll(".p-mesiac-cb").forEach(cb => cb.checked = true);
+    loadPrehlad();
+  });
+  document.getElementById("p-mesiace-ziadne").addEventListener("click", () => {
+    cbBox.querySelectorAll(".p-mesiac-cb").forEach(cb => cb.checked = false);
+    loadPrehlad();
+  });
+}
+
+async function loadPrehlad() {
+  const rok = document.getElementById("p-rok").value;
+  const mesiace = Array.from(document.querySelectorAll(".p-mesiac-cb:checked")).map(cb => cb.value);
+  const tbody = document.getElementById("prehlad-tbody");
+  if (!mesiace.length) {
+    document.getElementById("p-suhrn").textContent = "Vyber aspoň jeden mesiac.";
+    tbody.innerHTML = "<tr><td colspan='3'>Vyber aspoň jeden mesiac.</td></tr>";
+    return;
+  }
+  const data = await api(`/prehlad/mesiac?rok=${rok}&mesiace=${mesiace.join(",")}`);
+  document.getElementById("p-suhrn").textContent =
+    `${data.suhrn.pocet_poruch || 0} porúch, ${fmtMoney(data.suhrn.trzba_spolu || 0)}`;
+  if (!data.podla_zakazky.length) { tbody.innerHTML = "<tr><td colspan='3'>Žiadne dáta za toto obdobie.</td></tr>"; return; }
+  tbody.innerHTML = data.podla_zakazky.map(z => `
+    <tr><td>${z.cislo_zakazky || "—"}</td><td>${z.pocet_poruch}</td><td>${fmtMoney(z.trzba)}</td></tr>
+  `).join("");
+}
+
+// ---------------------------------------------------------------------
+// Technici
+// ---------------------------------------------------------------------
+async function loadTechniciView() {
+  const all = await api("/technici?aktivne_len=false");
+  const el = document.getElementById("technici-list");
+  el.innerHTML = "";
+  all.forEach(t => {
+    const row = document.createElement("div");
+    row.className = "card-item" + (t.aktivny ? "" : " inactive");
+    row.innerHTML = `<span>${escapeHtml(t.meno)} ${t.aktivny ? "" : "(neaktívny)"}</span>
+      <span style="display:flex;gap:6px;">
+        ${t.aktivny
+          ? `<button class="btn-secondary" data-deact-tech="${t.id}">Deaktivovať</button>`
+          : `<button class="btn-secondary" data-act-tech="${t.id}">Aktivovať</button>`}
+        <button class="btn-danger" data-delete-tech="${t.id}">Vymazať</button>
+      </span>`;
+    el.appendChild(row);
+  });
+  el.querySelectorAll("[data-deact-tech]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      if (!confirm("Deaktivovať technika?")) return;
+      await api("/technici/" + btn.dataset.deactTech + "/deaktivovat", { method: "PATCH" });
+      loadTechniciView();
+      loadCiselnikyATechnici();
+    });
+  });
+  el.querySelectorAll("[data-act-tech]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      await api("/technici/" + btn.dataset.actTech + "/aktivovat", { method: "PATCH" });
+      loadTechniciView();
+      loadCiselnikyATechnici();
+    });
+  });
+  el.querySelectorAll("[data-delete-tech]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      if (!confirm("Natrvalo vymazať technika? Táto akcia sa nedá vrátiť späť.")) return;
+      try {
+        await api("/technici/" + btn.dataset.deleteTech, { method: "DELETE" });
+        loadTechniciView();
+        loadCiselnikyATechnici();
+      } catch (e) {
+        alert("Chyba: " + e.message);
+      }
+    });
+  });
+}
+
+document.getElementById("nt-add").addEventListener("click", async () => {
+  const meno = document.getElementById("nt-meno").value.trim();
+  if (!meno) return;
+  await api("/technici", { method: "POST", body: JSON.stringify({ meno }) });
+  document.getElementById("nt-meno").value = "";
+  loadTechniciView();
+  loadCiselnikyATechnici();
+});
+
+// ---------------------------------------------------------------------
+// Nastavenia — číselníky
+// ---------------------------------------------------------------------
+const CISELNIK_LABELS = { dopady: "Dopad (PP / OS / KU / TKZ)", typy: "Typ (OPR / REKL / CZ / PT)", media: "Médium" };
+
+async function loadNastaveniaView() {
+  const container = document.getElementById("ciselniky-container");
+  container.innerHTML = "";
+  for (const nazov of ["dopady", "typy", "media"]) {
+    const items = await api(`/ciselniky/${nazov}?aktivne_len=false`);
+    const block = document.createElement("div");
+    block.style.marginBottom = "24px";
+    block.innerHTML = `
+      <h3>${CISELNIK_LABELS[nazov]}</h3>
+      <div class="add-row">
+        <input placeholder="Kód (napr. NOV)" id="new-${nazov}-kod" style="width:100px;">
+        <input placeholder="Názov" id="new-${nazov}-nazov" style="width:220px;">
+        <button class="btn-primary" data-add-cis="${nazov}">Pridať</button>
+      </div>
+      <div class="card-list" id="list-${nazov}"></div>
+    `;
+    container.appendChild(block);
+    const listEl = block.querySelector(`#list-${nazov}`);
+    items.forEach(it => {
+      const row = document.createElement("div");
+      row.className = "card-item" + (it.aktivny ? "" : " inactive");
+      row.innerHTML = `<span><b>${escapeHtml(it.kod)}</b> — ${escapeHtml(it.nazov)} ${it.aktivny ? "" : "(neaktívne)"}</span>
+        ${it.aktivny ? `<button class="btn-danger" data-deact-cis="${nazov}:${it.id}">Deaktivovať</button>` : ""}`;
+      listEl.appendChild(row);
+    });
+  }
+  container.querySelectorAll("[data-add-cis]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const nazov = btn.dataset.addCis;
+      const kod = document.getElementById(`new-${nazov}-kod`).value.trim();
+      const nazovVal = document.getElementById(`new-${nazov}-nazov`).value.trim();
+      if (!kod || !nazovVal) { alert("Vyplň kód aj názov."); return; }
+      await api(`/ciselniky/${nazov}`, { method: "POST", body: JSON.stringify({ kod, nazov: nazovVal }) });
+      loadNastaveniaView();
+      loadCiselnikyATechnici();
+    });
+  });
+  container.querySelectorAll("[data-deact-cis]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const [nazov, id] = btn.dataset.deactCis.split(":");
+      if (!confirm("Deaktivovať položku?")) return;
+      await api(`/ciselniky/${nazov}/${id}/deaktivovat`, { method: "PATCH" });
+      loadNastaveniaView();
+      loadCiselnikyATechnici();
+    });
+  });
+}
+
+// ---------------------------------------------------------------------
+// Používatelia (len admin)
+// ---------------------------------------------------------------------
+async function loadPouzivateliaView() {
+  if (state.role !== "admin") return;
+  const all = await api("/users");
+  const el = document.getElementById("pouzivatelia-list");
+  el.innerHTML = "";
+  all.forEach(u => {
+    const row = document.createElement("div");
+    row.className = "card-item" + (u.aktivny ? "" : " inactive");
+    row.innerHTML = `<span><b>${escapeHtml(u.email)}</b> — ${u.role} ${u.aktivny ? "" : "(neaktívny)"}</span>
+      <button class="btn-secondary" data-edit-user="${u.id}">Upraviť</button>`;
+    el.appendChild(row);
+  });
+  el.querySelectorAll("[data-edit-user]").forEach(btn => {
+    btn.addEventListener("click", () => openPouzivatelModal(all.find(u => u.id === Number(btn.dataset.editUser))));
+  });
+}
+
+document.getElementById("nu-add").addEventListener("click", async () => {
+  const email = document.getElementById("nu-email").value.trim();
+  const heslo = document.getElementById("nu-heslo").value;
+  const rola = document.getElementById("nu-rola").value;
+  if (!email || !heslo) { alert("Vyplň email aj heslo."); return; }
+  if (heslo.length < 6) { alert("Heslo musí mať aspoň 6 znakov."); return; }
+  try {
+    await api("/users", { method: "POST", body: JSON.stringify({ email, password: heslo, role: rola }) });
+    document.getElementById("nu-email").value = "";
+    document.getElementById("nu-heslo").value = "";
+    loadPouzivateliaView();
+  } catch (e) {
+    alert("Chyba: " + e.message);
+  }
+});
+
+function openPouzivatelModal(u) {
+  state.editingUserId = u.id;
+  document.getElementById("pu-email").value = u.email;
+  document.getElementById("pu-rola").value = u.role;
+  document.getElementById("pu-aktivny").checked = u.aktivny;
+  document.getElementById("pu-heslo").value = "";
+  document.getElementById("pu-error").textContent = "";
+  document.getElementById("modal-pouzivatel").classList.remove("hidden");
+}
+
+document.getElementById("pu-cancel").addEventListener("click", () => {
+  document.getElementById("modal-pouzivatel").classList.add("hidden");
+});
+
+document.getElementById("pu-save").addEventListener("click", async () => {
+  const errBox = document.getElementById("pu-error");
+  errBox.textContent = "";
+  const heslo = document.getElementById("pu-heslo").value;
+  if (heslo && heslo.length < 6) { errBox.textContent = "Heslo musí mať aspoň 6 znakov."; return; }
+  const payload = {
+    email: document.getElementById("pu-email").value.trim(),
+    role: document.getElementById("pu-rola").value,
+    aktivny: document.getElementById("pu-aktivny").checked,
+  };
+  if (heslo) payload.password = heslo;
+  try {
+    await api("/users/" + state.editingUserId, { method: "PATCH", body: JSON.stringify(payload) });
+    document.getElementById("modal-pouzivatel").classList.add("hidden");
+    loadPouzivateliaView();
+  } catch (e) {
+    errBox.textContent = e.message;
+  }
+});
+
+// ---------------------------------------------------------------------
+// Inicializácia appky
+// ---------------------------------------------------------------------
+async function initApp() {
+  showApp();
+  initPrehladSelectors();
+  await loadCiselnikyATechnici();
+  await loadDashboard();
+  await loadPoruchy();
+}
+
+(async function boot() {
+  if (loadAuth()) {
+    try {
+      await api("/me");
+      await initApp();
+      return;
+    } catch (e) {
+      clearAuth();
+    }
+  }
+  showLogin();
+})();
+
+})();
+</script>
+</body>
+</html>
